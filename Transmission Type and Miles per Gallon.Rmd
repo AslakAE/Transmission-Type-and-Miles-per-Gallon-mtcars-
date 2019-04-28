@@ -1,0 +1,259 @@
+---
+title: "Motor Trend Investigates the Relationship Between Transmission Type and Miles per Gallon"
+author: "Aslak"
+output: pdf_document
+---
+
+```{r, cache = TRUE}
+# This report has been written in knitr.
+```
+
+## Executive Summary
+The report shows that features of a car model, such as transmission type, number of cylinders and horsepower, can accurately predict the consumption (multivariable linear regression model). 
+
+The provided data in the mtcars data set shows with 95 % confidence that manual transmission is better for MPG. However, the data has its limitation and the linear model emphasizes that MPG should not be predicted solely by transmission type.
+
+## Exploratory Data Analysis: manual better for MPG - but other features should be considered
+
+```{r, cache = TRUE, echo = FALSE, results = "hide", fig.show = "hide", message = FALSE}
+library(ggplot2)
+library(dplyr)
+library(kableExtra)
+
+data(mtcars)
+```
+
+```{r, cache = TRUE, echo = FALSE, fig.height = 3}
+## Seperate based on transmission type, cylinders and weight in lbs. Show mean and 95 % conf interval.
+
+# Facet titles
+f_titles <- c(
+        "0" = "Automatic", 
+        "1" = "Manual"
+        )
+
+# Create ggplot
+g <- ggplot(mtcars, aes(x = wt, y = mpg, group = cyl))
+# Violin plot
+g <- g + geom_point(aes(colour = cyl, size = hp))
+# Grid with supplement type in different window
+g <- g + facet_grid(. ~ am, labeller = as_labeller(f_titles))
+# Create labels
+g <- g + labs(
+  x = "Weight in lbs", 
+  y = "Miles/ US gallons", 
+  title = "Variation in Gas Consumption for Selection of Parameters")
+# Show plot
+g
+```
+
+The plot above suggests that the cars with manual transmission have more miles per gallon. However, the graph shows that there are other parameters - such as number of cylinders, weight and horsepower - that may affect miles per gallon.
+
+## Is an Automatic or Manual Transmission Better for MPG?
+
+As a starting point, the MPG difference for transmission type is shown. One way is to calculate the different in mean MPG - for the data set provided:
+
+```{r, cache = TRUE, echo = FALSE, message = FALSE}
+# Subset for transmission type and calculate mean.
+mean_auto <- mtcars %>% 
+  filter(am == 0) %>% 
+  summarise(Mean = mean(mpg))
+
+mean_manual <- mtcars %>% 
+  filter(am == 1) %>% 
+  summarise(Mean = mean(mpg)) 
+
+dt_mean <- matrix(c(format(round(mean_auto, 1), nsmall = 1), format(round(mean_manual, 1), nsmall = 1)), ncol = 2, byrow = TRUE)
+colnames(dt_mean) <- c("Automatic", "Manual")
+kable(dt_mean)
+```
+
+The mean MPG for automatic transmission is shown to be worse compared to manual - for the car models in the mtcars data set. 
+Additionally, we calculate whether this can be concluded with 95 % confidence. Hence, our hypothesis H0 is that the mean for automatic transmission is equal to manual transmission.
+
+```{r, cache = TRUE, echo = FALSE, message = FALSE}
+## Calculate t.test to see if the hypothesis that 
+## the mean for automatic and manual transmission is the same.
+
+# Perform t.test without paring and assuming unequal variance.
+t.test(mpg ~ factor(am), paired = FALSE, var.equal = FALSE, data = mtcars)$conf
+```
+
+The t.test shows that - **given the provided data** - automatic transmission has a worse miles per gallon than manual transmission (with 95 % confidence). However, the data has its limitation. As the explanatory data analysis has indicated, a multivariable linear regression may improve the prediction of MPG. If the data was larger, it is not unlikely that the t test's conclusion would be different.
+
+## Model Selection: Transmission Type, Number of Cylinders and Horsepower
+
+Our strategy for selecting a model is as follows: start with a simple linear regression model and add different features of the car models as predictors. It is a pragmatic approach to start with a simple linear regression, which may be provide good "value" for litte effort. However, our intuition supports the idea of a multivariable regression - there are probably other features that should be accounted for - other than transmission type.
+
+To conclude on a model, a test of the significance/importance of each feature to predict miles per gallon is then performed (**anova test**).
+
+```{r, cache = TRUE, echo = FALSE, fig.height = 3, results = "hide"}
+model1 <- lm(mpg ~ factor(am), mtcars)
+model2 <- lm(mpg ~ factor(am) + factor(cyl), mtcars)
+model3 <- lm(mpg ~ factor(am) + factor(cyl) + disp, mtcars)
+model4 <- lm(mpg ~ factor(am) + factor(cyl) + disp + hp, mtcars)
+model5 <- lm(mpg ~ factor(am) + factor(cyl) + disp + hp + drat, mtcars)
+model6 <- lm(mpg ~ factor(am) + factor(cyl) + disp + hp + drat + wt, mtcars)
+model7 <- lm(mpg ~ factor(am) + factor(cyl) + disp + hp + drat + wt + qsec, mtcars)
+model8 <- lm(mpg ~ factor(am) + factor(cyl) + disp + hp + drat + wt + qsec + factor(vs), mtcars)
+model9 <- lm(mpg ~ factor(am) + factor(cyl) + disp + hp + drat + wt + qsec + factor(vs) + factor(gear), mtcars)
+model10 <- lm(mpg ~ factor(am) + factor(cyl) + disp + hp + drat + wt + qsec + factor(vs) + factor(gear) + factor(carb), mtcars)
+
+anova(model1, model2, model3, model4, model5, model6, model7, model8, model9, model10)
+```
+
+The anova test shows (details in appendix) that the **miles per gallon consumption** predicted by **transmission type** should include the features: **number of cylinders** and **horsepower**. The anova test shows significance for the inclusion of these features.
+
+## Residuals and Diagnostics supports Multivariable Linear Model (details in appendix)
+
+After selecting the multivariable linear model that we believe can predict the consumption - we assess the residuals and perform some diagnostics. This can aid us in finding limitations and weaknesses of the model.
+
+```{r, cache = TRUE, echo = FALSE, fig.show = "hide", results = "hide"}
+fit <- lm(mpg ~ factor(am) + factor(cyl) + hp, mtcars)
+ggplot(mtcars, aes(x= resid(fit), y = predict(fit))) + geom_point()
+```
+
+The residuals of the linear model does not imply a systematic pattern - which supports the choice of a multivariable linear model. Additionally, some diagnostics are simulated to reveal any other weaknesses in the linear model.
+
+```{r, cache = TRUE, echo = FALSE, fig.show = "hide", results = "hide"}
+plot(fit)
+```
+
+The diagnostics show that the multivariable linear regression model with transmission type, number of cylinders and horsepower is a useful model for predicting miles per gallon. These graphs are included in the appendix.
+
+## Uncertainty in Conclusions
+
+Lastly, we illustrate the uncertainty in our conclusion of the model by calculating the confidence interval (uncertainty around the mean predictions). The intercept corresponds to automatic transmission in the table below.
+```{r, cache = TRUE, echo = FALSE, fig.height = 3}
+# Confidence interval for betas for out model
+confint(fit)
+```
+
+\pagebreak
+
+# Appendix: Supporting Figures
+## Initiation
+
+```{r, cache = TRUE, echo = FALSE, fig.height = 3, results = "hide", fig.show="hide"}
+library(datasets)
+library(ggplot2)
+library(kableExtra)
+
+# Load mtcars data from the R package datasets.
+data(mtcars)
+```
+
+## Exploratory Data Analysis
+
+```{r, cache = TRUE, echo = FALSE, fig.height = 3}
+## Seperate based on transmission type, cylinders and weight in lbs. Show mean and 95 % conf interval.
+
+# Facet titles
+f_titles <- c(
+        "0" = "Automatic", 
+        "1" = "Manual"
+        )
+
+# Create ggplot
+g <- ggplot(mtcars, aes(x = cyl, y = mpg, group = cyl))
+# Violin plot
+g <- g + geom_violin(aes(fill = cyl), trim = FALSE)
+# Grid with supplement type in different window
+g <- g + facet_grid(. ~ am, labeller = as_labeller(f_titles))
+# Create labels
+g <- g + labs(
+  x = "No. of cylinders", 
+  y = "Miles/ US gallons", 
+  title = "Variation in gas consumption for selection of parameters")
+# Show plot
+g
+```
+
+```{r, cache = TRUE, echo = FALSE, fig.height = 3}
+## Seperate based on transmission type, cylinders and weight in lbs. Show mean and 95 % conf interval.
+
+# Create ggplot
+g <- ggplot(mtcars, aes(x = wt, y = mpg, group = cyl))
+# Violin plot
+g <- g + geom_point(aes(colour = cyl, size = hp))
+# Grid with supplement type in different window
+g <- g + facet_grid(. ~ am, labeller = as_labeller(f_titles))
+# Create labels
+g <- g + labs(
+  x = "Weight in lbs", 
+  y = "Miles/ US gallons", 
+  title = "Variation in gas consumption for selection of parameters")
+# Show plot
+g
+```
+
+## Is an Automatic or Manual Transmission Better for MPG?
+
+Mean MPG for automatic (0) and manual (1) transmission.
+```{r, cache = TRUE, echo = FALSE, message = FALSE}
+# Subset for transmission type and calculate mean.
+mtcars %>% 
+  group_by(am) %>% 
+  summarise(Mean = mean(mpg))
+```
+
+T test with hypothesis H0 that the mean for automatic and manual transmission is equal.
+```{r, cache = TRUE, echo = FALSE, message = FALSE}
+## Calculate t.test to see if the hypothesis that 
+## the mean for automatic and manual transmission is the same.
+
+# Perform t.test without paring and assuming unequal variance.
+t.test(mpg ~ factor(am), paired = FALSE, var.equal = FALSE, data = mtcars)$conf
+```
+
+## Model Selection
+
+```{r, cache = TRUE, echo = FALSE, fig.height = 3}
+# Create multivariable linear models with accumulation of features included.
+model1 <- lm(mpg ~ factor(am), mtcars)
+model2 <- lm(mpg ~ factor(am) + factor(cyl), mtcars)
+model3 <- lm(mpg ~ factor(am) + factor(cyl) + disp, mtcars)
+model4 <- lm(mpg ~ factor(am) + factor(cyl) + disp + hp, mtcars)
+model5 <- lm(mpg ~ factor(am) + factor(cyl) + disp + hp + drat, mtcars)
+model6 <- lm(mpg ~ factor(am) + factor(cyl) + disp + hp + drat + wt, mtcars)
+model7 <- lm(mpg ~ factor(am) + factor(cyl) + disp + hp + drat + wt + qsec, mtcars)
+model8 <- lm(mpg ~ 
+                     factor(am) + factor(cyl) + 
+                     disp + hp + drat + wt + 
+                     qsec + factor(vs), mtcars)
+model9 <- lm(mpg ~ 
+                     factor(am) + factor(cyl) + 
+                     disp + hp + drat + wt + 
+                     qsec + factor(vs) + factor(gear), mtcars)
+model10 <- lm(mpg ~ 
+                      factor(am) + factor(cyl) + 
+                      disp + hp + drat + wt + 
+                      qsec + factor(vs) + factor(gear) + factor(carb), mtcars)
+
+# Perform anova test to see which features improve the model significantly.
+anova(model1, model2, model3, model4, model5, model6, model7, model8, model9, model10)
+```
+
+## Residuals and Diagnostics
+
+```{r, cache = TRUE, echo = FALSE, fig.height = 3}
+# The final multivariable linear model.
+fit <- lm(mpg ~ factor(am) + factor(cyl) + hp, mtcars)
+
+# Plot the residuals.
+ggplot(mtcars, aes(x= resid(fit), y = predict(fit))) + geom_point()
+```
+
+```{r, cache = TRUE, echo = FALSE, fig.height = 3}
+# Plot the diagnostics in a 2x2 grid
+par(mfrow = c(2, 2))
+par(mar = rep(2, 4))
+plot(fit)
+```
+
+## Uncertainty in Conclusions
+
+```{r, cache = TRUE, echo = FALSE, fig.height = 3}
+# Confidence interval for betas for out model
+confint(fit)
+```
