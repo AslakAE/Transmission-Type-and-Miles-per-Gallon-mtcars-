@@ -9,7 +9,7 @@ output: pdf_document
 ```
 
 ## Executive Summary
-The report shows that features of a car model, such as transmission type, number of cylinders and horsepower, can accurately predict the consumption (multivariable linear regression model). 
+The report shows that features of a car model, such as transmission type, number of cylinders and horsepower, can predict the consumption (MPG). This multivariable regression model explains approximately 80 % of the variance.
 
 The provided data in the mtcars data set shows with 95 % confidence that manual transmission is better for MPG. However, the data has its limitation and the linear model emphasizes that MPG should not be predicted solely by transmission type.
 
@@ -88,7 +88,7 @@ Our strategy for selecting a model is as follows: start with a simple linear reg
 To conclude on a model, a test of the significance/importance of each feature to predict miles per gallon is then performed (**anova test**).
 
 ```{r, cache = TRUE, echo = FALSE, fig.height = 3, results = "hide"}
-model1 <- lm(mpg ~ factor(am), mtcars)
+model1 <- lm(mpg ~ factor(am), mtcars) # Show R-squared?
 model2 <- lm(mpg ~ factor(am) + factor(cyl), mtcars)
 model3 <- lm(mpg ~ factor(am) + factor(cyl) + disp, mtcars)
 model4 <- lm(mpg ~ factor(am) + factor(cyl) + disp + hp, mtcars)
@@ -102,14 +102,14 @@ model10 <- lm(mpg ~ factor(am) + factor(cyl) + disp + hp + drat + wt + qsec + fa
 anova(model1, model2, model3, model4, model5, model6, model7, model8, model9, model10)
 ```
 
-The anova test shows (details in appendix) that the **miles per gallon consumption** predicted by **transmission type** should include the features: **number of cylinders** and **horsepower**. The anova test shows significance for the inclusion of these features.
+The anova test shows (details in appendix) that the **miles per gallon consumption** predicted by **transmission type** should include the features: **number of cylinders** and **horsepower**. The anova test shows significance for the inclusion of these features. The transmission type explains approximately 34 % of the variance (adjusted R-squared) in a simple linear regression model. In the model with the features cylinders and horsepower - approximately 80 % of the variance is explained.
 
 ## Residuals and Diagnostics supports Multivariable Linear Model (details in appendix)
 
 After selecting the multivariable linear model that we believe can predict the consumption - we assess the residuals and perform some diagnostics. This can aid us in finding limitations and weaknesses of the model.
 
 ```{r, cache = TRUE, echo = FALSE, fig.show = "hide", results = "hide"}
-fit <- lm(mpg ~ factor(am) + factor(cyl) + hp, mtcars)
+fit <- lm(mpg ~ factor(am) + factor(cyl) + hp, mtcars) 
 ggplot(mtcars, aes(x= resid(fit), y = predict(fit))) + geom_point()
 ```
 
@@ -232,6 +232,17 @@ model10 <- lm(mpg ~
 
 # Perform anova test to see which features improve the model significantly.
 anova(model1, model2, model3, model4, model5, model6, model7, model8, model9, model10)
+
+# Suggested model
+fit <- lm(mpg ~ factor(am) + factor(cyl) + hp, mtcars)
+```
+
+R-squared (adjusted) for the linear model and the suggested multivariable model.
+
+```{r, cache = TRUE, echo = FALSE, fig.height = 3}
+# Show R squared for linear model and the suggested multivariable model
+summary(model1)$adj.r.squared
+summary(fit)$adj.r.squared
 ```
 
 ## Residuals and Diagnostics
